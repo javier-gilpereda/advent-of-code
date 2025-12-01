@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     alias(libs.plugins.jvm)
     application
@@ -22,15 +20,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params")
 }
 
-tasks {
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "21"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
+}
 
-    withType<Test> {
-        useJUnitPlatform()
-        testLogging.showStandardStreams = true
-        minHeapSize = "2048m"
-        maxHeapSize = "6144m"
-    }
+tasks.named<Test>("test") {
+    useJUnitPlatform()
 }

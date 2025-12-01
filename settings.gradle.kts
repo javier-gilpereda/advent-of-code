@@ -1,5 +1,5 @@
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 dependencyResolutionManagement {
@@ -12,4 +12,11 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "advent-of-code"
-include("advents:aoc2021", "advents:aoc2022", "advents:aoc2023", "advents:aoc2024", "common:commons")
+include(
+    "advents:aoc2021",
+    "advents:aoc2022",
+    "advents:aoc2023",
+    "advents:aoc2024",
+    "advents:aoc2025",
+    "common:commons",
+)
