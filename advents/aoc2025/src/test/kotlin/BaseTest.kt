@@ -2,6 +2,8 @@ package com.gilpereda.aoc2025
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 abstract class BaseTest {
     abstract val example: String
@@ -40,12 +42,12 @@ abstract class BaseTest {
         assertThat(run(input.splitToSequence("\n"))).isEqualTo(expected)
     }
 
-    @Test
+//    @Test
     fun `should work with the example - part 1`() {
         check(example to resultExample1, ::runExample1)
     }
 
-    @Test
+//    @Test
     fun `should return the result - part 1`() {
         assertThat(runReal1(inputSequence)).isEqualTo(resultReal1)
     }

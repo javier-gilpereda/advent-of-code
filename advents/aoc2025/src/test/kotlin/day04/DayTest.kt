@@ -16,7 +16,7 @@ class DayTest : BaseTest() {
 
     override val resultReal2: String = ""
 
-    override val input: String = "/day01/input"
+    override val input: String = "/day04/input"
 
     override val run1: Executable = ::firstTask
 
