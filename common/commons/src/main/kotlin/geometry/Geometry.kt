@@ -19,6 +19,7 @@ import kotlin.math.sqrt
 class Point private constructor(
     val x: Int,
     val y: Int,
+    val extended: Boolean = false,
 ) {
     fun north(steps: Int = 1): Point = from(x, y - steps)
 
@@ -181,23 +182,27 @@ data class Polygon(
         val newSides =
             (listOf(sides.last()) + sides).windowed(2).map { (previous, side) ->
                 when (previous.orientation.turnedDirectionTo(side.orientation)) {
-                    RIGHT ->
+                    RIGHT -> {
                         when (side.orientation) {
                             NORTH -> if (clockwise) side.from.south() else side.from.east()
                             SOUTH -> if (clockwise) side.from.east() else side.from.south()
                             EAST -> if (clockwise) side.from else side.from.south().east()
                             WEST -> if (clockwise) side.from.south().east() else side.from
                         }
+                    }
 
-                    LEFT ->
+                    LEFT -> {
                         when (side.orientation) {
                             NORTH -> if (clockwise) side.from else side.from.east().south()
                             SOUTH -> if (clockwise) side.from.south().east() else side.from
                             EAST -> if (clockwise) side.from.east() else side.from.south()
                             WEST -> if (clockwise) side.from.south() else side.from.east()
                         }
+                    }
 
-                    else -> throw IllegalStateException("Unpossible turn")
+                    else -> {
+                        throw IllegalStateException("Unpossible turn")
+                    }
                 }
             }
         return Polygon(newSides)

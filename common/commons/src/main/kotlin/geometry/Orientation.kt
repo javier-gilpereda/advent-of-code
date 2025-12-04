@@ -24,10 +24,9 @@ enum class Orientation(
 
     val isHorizontal: Boolean by lazy {
         when (this) {
-            NORTH -> false
-            SOUTH -> false
             EAST -> true
             WEST -> true
+            else -> false
         }
     }
 
@@ -35,41 +34,47 @@ enum class Orientation(
         when (this) {
             NORTH -> true
             SOUTH -> true
-            EAST -> false
-            WEST -> false
+            else -> false
         }
     }
 
     fun turnedDirectionTo(other: Orientation): Direction =
         when (this) {
-            NORTH ->
+            NORTH -> {
                 when (other) {
                     NORTH -> Direction.FORWARD
                     SOUTH -> Direction.BACKWARDS
                     EAST -> Direction.RIGHT
                     WEST -> Direction.LEFT
                 }
-            SOUTH ->
+            }
+
+            SOUTH -> {
                 when (other) {
                     NORTH -> Direction.BACKWARDS
                     SOUTH -> Direction.FORWARD
                     EAST -> Direction.LEFT
                     WEST -> Direction.RIGHT
                 }
-            EAST ->
+            }
+
+            EAST -> {
                 when (other) {
                     NORTH -> Direction.LEFT
                     SOUTH -> Direction.RIGHT
                     EAST -> Direction.FORWARD
                     WEST -> Direction.BACKWARDS
                 }
-            WEST ->
+            }
+
+            WEST -> {
                 when (other) {
                     NORTH -> Direction.RIGHT
                     SOUTH -> Direction.LEFT
                     EAST -> Direction.BACKWARDS
                     WEST -> Direction.FORWARD
                 }
+            }
         }
 
     fun turnLeft(): Orientation =

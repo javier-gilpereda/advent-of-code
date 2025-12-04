@@ -6,15 +6,25 @@ import com.gilpereda.aoc2025.Executable
 class DayTest : BaseTest() {
     override val example: String =
         """
+        ..@@.@@@@.
+        @@@.@.@.@@
+        @@@@@.@.@@
+        @.@@@@..@.
+        @@.@@@@.@@
+        .@@@@@@@.@
+        .@.@.@.@@@
+        @.@@@.@@@@
+        .@@@@@@@@.
+        @.@.@@@.@.
         """.trimIndent()
 
-    override val resultExample1: String get() = TODO()
+    override val resultExample1: String = "13"
 
-    override val resultReal1: String = ""
+    override val resultReal1: String = "1437"
 
-    override val resultExample2: String get() = TODO()
+    override val resultExample2: String = "43"
 
-    override val resultReal2: String = ""
+    override val resultReal2: String = "8765"
 
     override val input: String = "/day04/input"
 
