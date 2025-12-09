@@ -176,7 +176,14 @@ class Point private constructor(
 data class Polygon(
     private val points: List<Point>,
 ) {
-    fun pointIsInside(point: Point): Boolean = sides.count { side -> side.crossesHorizontalLineAtYBeforeX(point.x, point.y) } % 2 == 1
+    fun pointIsInside(
+        point: Point,
+        includeBorder: Boolean = false,
+    ): Boolean =
+        sides.count { side -> side.crossesHorizontalLineAtYBeforeX(point.x, point.y) } % 2 == 1 ||
+            (includeBorder && pointIsInBorder(point))
+
+    fun pointIsInBorder(point: Point): Boolean = sides.any { side -> point in side }
 
     fun external(): Polygon {
         val newSides =
@@ -255,6 +262,21 @@ data class Line(
             null
         }
 
+    operator fun contains(point: Point): Boolean =
+        when {
+            isVertical -> point.x == from.x && point.y in (minY..maxY)
+            isHorizontal -> point.y == from.y && point.x in (minX..maxX)
+            else -> throw UnsupportedOperationException()
+        }
+
+    val points: List<Point> by lazy {
+        when {
+            isVertical -> (minY..maxY).map { Point.from(minX, it) }
+            isHorizontal -> (minX..maxX).map { Point.from(it, minY) }
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
     val orientation: Orientation by lazy {
         if (isHorizontal) {
             if (from.x <= to.x) {
@@ -274,7 +296,9 @@ data class Line(
     private val isHorizontal: Boolean = from.y == to.y
     private val isVertical: Boolean = from.x == to.x
 
+    private val minX = min(from.x, to.x)
     private val minY = min(from.y, to.y)
+    private val maxX = max(from.x, to.x)
     private val maxY = max(from.y, to.y)
 }
 

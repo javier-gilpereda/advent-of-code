@@ -1,5 +1,8 @@
 package com.gilpereda.adventofcode.commons.geometry
 
+import kotlin.math.pow
+import kotlin.math.sqrt
+
 class Point3D private constructor(
     val x: Int,
     val y: Int,
@@ -11,6 +14,13 @@ class Point3D private constructor(
         val (one, other) = projection.others
         return Point.from(axis(one), axis(other))
     }
+
+    fun straightDistanceTo(other: Point3D): Double =
+        sqrt(
+            (x - other.x).toDouble().pow(2.0) +
+                (y - other.y).toDouble().pow(2.0) +
+                (z - other.z).toDouble().pow(2.0),
+        )
 
     fun axis(axis: Axis): Int =
         when (axis) {
