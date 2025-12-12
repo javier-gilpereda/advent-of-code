@@ -29,10 +29,17 @@ private val JOLTAGE_STATE_REGEX = "\\{([0-9,]+)}".toRegex()
 data class Machine(
     val lights: Int,
     val initialLights: Int,
-    val buttons: List<Int>,
+    val buttons: List<List<Int>>,
     val joltage: List<Int>,
 ) {
-    val buttonsAsString: List<String> = buttons.map { it.toString(2).padStart(lights, '0').reversed() }
+    private val buttonsAsInt =
+        buttons.map { btns ->
+            (lights - 1 downTo 0)
+                .map { index ->
+                    if (index in btns) 1 else 0
+                }.joinToString("")
+                .toInt(2)
+        }
 
     fun toPushToInitialize(): Int {
         tailrec fun go(
@@ -46,7 +53,7 @@ data class Machine(
             return if (step.lights == 0) {
                 step.buttonsPushed
             } else {
-                val nextSteps = buttons.mapNotNull { step.next(it) }
+                val nextSteps = buttonsAsInt.mapNotNull { step.next(it) }
                 val winner = nextSteps.firstOrNull { it.lights == 0 }
 
                 if (winner != null) {
@@ -63,65 +70,50 @@ data class Machine(
 
     fun toPushToConfigureJoltage(): Int {
         tailrec fun go(
-            rest: Set<JoltageStep>,
-            acc: Int = Int.MAX_VALUE,
+            open: List<JoltageStep>,
+            current: Int = Int.MAX_VALUE,
         ): Int =
-            if (rest.isEmpty()) {
-                acc
+            if (open.isEmpty()) {
+                current
             } else {
-                val restSorted = rest.sortedWith(score)
-                val step = restSorted.first()
-
-                val nextSteps = buttonsAsString.mapNotNull { step.next(it, joltage, acc) }
-                val winner = nextSteps.firstOrNull { it.finished(joltage) }
-                if (winner != null) {
-                    println("Winner: $winner")
-                    go(restSorted.drop(1).toSet(), minOf(acc, winner.timesPushed))
+                val next = open.first()
+                if (next.finished()) {
+                    val nextOpen = open.drop(1).filter { it.pushed < current }
+                    go(nextOpen, next.pushed)
                 } else {
-                    val nextInitSteps = (restSorted.drop(1) + nextSteps).toSet()
-                    go(nextInitSteps, acc)
+                    val newOpen = next.next().filter { it.pushed < current }
+                    go(open.drop(1) + newOpen, current)
                 }
             }
-        val seed = buttonsAsString.mapNotNull { JoltageStep(joltage.map { 0 }).next(it, joltage, Int.MAX_VALUE) }.toSet()
-        return go(seed)
+
+        return go(listOf(JoltageStep(joltage)))
     }
 
-    private val score: Comparator<JoltageStep> =
-        compareByDescending(JoltageStep::timesPushed)
-            .then(
-                compareBy {
-                    it.current.zip(joltage).sumOf { (one, other) -> other - one }
-                },
-            )
-
-    data class JoltageStep(
+    inner class JoltageStep(
         val current: List<Int>,
-        val steps: List<String> = emptyList(),
+        val pushed: Int = 0,
     ) {
-        val timesPushed: Int = steps.count()
+        fun finished(): Boolean = current.all { it == 0 }
 
-        fun next(
-            buttons: String,
-            goal: List<Int>,
-            limit: Int,
-        ): JoltageStep? {
-            val nextJoltage = current.mapIndexed { index, state -> if (buttons[index] == '1') state + 1 else state }
-            return if (timesPushed < limit && isPossibleJoltage(nextJoltage, goal)) {
-                JoltageStep(
-                    current = nextJoltage,
-                    steps = (steps + buttons).sorted(),
-                )
+        fun next(): List<JoltageStep> =
+            current
+                .mapIndexed { index, state -> index to state }
+                .firstOrNull { (_, state) -> state > 0 }
+                ?.first
+                ?.let { nextIndex ->
+                    buttons.filter { button -> nextIndex in button }
+                }?.mapNotNull { next(it) } ?: emptyList()
+
+        private fun next(buttons: List<Int>): JoltageStep? {
+            val next = current.mapIndexed { index, state -> if (index in buttons) state - 1 else state }
+            return if (isPossible(next)) {
+                JoltageStep(next, pushed + 1)
             } else {
                 null
             }
         }
 
-        fun finished(goal: List<Int>): Boolean = current.mapIndexed { index, state -> state == goal[index] }.all { it }
-
-        private fun isPossibleJoltage(
-            next: List<Int>,
-            goal: List<Int>,
-        ): Boolean = next.mapIndexed { index, state -> state <= goal[index] }.all { it }
+        private fun isPossible(newJolt: List<Int>): Boolean = newJolt.all { it >= 0 }
     }
 
     companion object {
@@ -142,14 +134,8 @@ data class Machine(
                 BUTTONS_REGEX
                     .findAll(line)
                     .map { it.destructured }
-                    .map { (buttonsStr) ->
-                        val btns = buttonsStr.split(",").map(String::toInt)
-                        (rawLightStatus.length - 1 downTo 0)
-                            .map {
-                                if (it in btns) 1 else 0
-                            }.joinToString("")
-                            .toInt(2)
-                    }.toList()
+                    .map { (buttonsStr) -> buttonsStr.split(",").map(String::toInt) }
+                    .toList()
 
             val joltage =
                 JOLTAGE_STATE_REGEX.find(line)?.destructured?.let { (joltage) -> joltage.split(",").map(String::toInt) }!!
