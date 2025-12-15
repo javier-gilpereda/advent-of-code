@@ -1,5 +1,8 @@
 package com.gilpereda.aoc2025.day10
 
+typealias Joltage = List<Int>
+typealias Buttons = List<Int>
+
 fun firstTask(input: Sequence<String>): String {
     var count = 0
     return input
@@ -29,11 +32,12 @@ private val JOLTAGE_STATE_REGEX = "\\{([0-9,]+)}".toRegex()
 data class Machine(
     val lights: Int,
     val initialLights: Int,
-    val buttons: List<List<Int>>,
-    val joltage: List<Int>,
+    val buttonsList: List<Buttons>,
+    val joltage: Joltage,
 ) {
+    private val buttonsPermutations = mutableMapOf<List<Buttons>, MutableMap<Int, List<Joltage>>>()
     private val buttonsAsInt =
-        buttons.map { btns ->
+        buttonsList.map { btns ->
             (lights - 1 downTo 0)
                 .map { index ->
                     if (index in btns) 1 else 0
@@ -81,8 +85,8 @@ data class Machine(
                     val nextOpen = open.drop(1).filter { it.pushed < current }
                     go(nextOpen, next.pushed)
                 } else {
-                    val newOpen = next.next().filter { it.pushed < current }
-                    go(open.drop(1) + newOpen, current)
+                    val newOpen = open.drop(1) + next.next().filter { it.pushed < current }
+                    go(newOpen.sortedByDescending { it.pushed }, current)
                 }
             }
 
@@ -90,7 +94,7 @@ data class Machine(
     }
 
     inner class JoltageStep(
-        val current: List<Int>,
+        val current: Joltage,
         val pushed: Int = 0,
     ) {
         fun finished(): Boolean = current.all { it == 0 }
@@ -99,12 +103,14 @@ data class Machine(
             current
                 .mapIndexed { index, state -> index to state }
                 .firstOrNull { (_, state) -> state > 0 }
-                ?.first
-                ?.let { nextIndex ->
-                    buttons.filter { button -> nextIndex in button }
-                }?.mapNotNull { next(it) } ?: emptyList()
+                ?.let { (index, count) ->
+                    val nextButtons = buttonsList.filter { btns -> index in btns }
+                    findPermutations(nextButtons, count)
+                        .mapNotNull { permutation -> next(permutation) }
+                }
+                ?: emptyList()
 
-        private fun next(buttons: List<Int>): JoltageStep? {
+        private fun next(buttons: Buttons): JoltageStep? {
             val next = current.mapIndexed { index, state -> if (index in buttons) state - 1 else state }
             return if (isPossible(next)) {
                 JoltageStep(next, pushed + 1)
@@ -113,8 +119,22 @@ data class Machine(
             }
         }
 
-        private fun isPossible(newJolt: List<Int>): Boolean = newJolt.all { it >= 0 }
+        private fun isPossible(newJolt: Joltage): Boolean = newJolt.all { it >= 0 }
     }
+
+    private fun findPermutations(
+        buttonsList: List<Buttons>,
+        count: Int,
+    ): List<Joltage> =
+        buttonsPermutations
+            .computeIfAbsent(buttonsList) { mutableMapOf() }
+            .computeIfAbsent(count) {
+                findPermutations(buttonsList, count - 1).flatMap { permutation ->
+                    buttonsList.map { buttons ->
+                        permutation.mapIndexed { index, item -> if (index in buttons) item + 1 else item }
+                    }
+                }
+            }
 
     companion object {
         fun fromLine(line: String): Machine {
@@ -142,7 +162,7 @@ data class Machine(
             return Machine(
                 initialLights = initialLights,
                 lights = rawLightStatus.length,
-                buttons = buttons,
+                buttonsList = buttons,
                 joltage = joltage,
             )
         }

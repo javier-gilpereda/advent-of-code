@@ -59,22 +59,30 @@ class ByteArrayTwoDimensionalMap<T>(
     fun values(): List<T> = internalMap.flatMap { line -> line.map(toValue) }
 
     fun count(predicate: (T) -> Boolean): Int = values().count(predicate)
+
+//    fun rotateRight(): ByteArrayTwoDimensionalMap<T> =
+//        ByteArrayTwoDimensionalMap(
+//            toValue = toValue,
+//            fromValue = fromValue,
+//            internalMap = internalMap.map { it },
+//        ).also { newMap ->
+//        }
 }
 
 @OptIn(ExperimentalUnsignedTypes::class)
 fun <T> List<String>.parseToByteArrayMap(
     parse: (Char) -> T,
-    toValue: UByte.() -> T,
-    fromValue: T.() -> UByte,
+    toValue: (UByte) -> T,
+    fromValue: (T) -> UByte,
 ) = ByteArrayTwoDimensionalMap(
     toValue = toValue,
     fromValue = fromValue,
-    internalMap = map { line -> line.map { parse(it).fromValue() }.toUByteArray() }.toTypedArray(),
+    internalMap = map { line -> line.map { fromValue(parse(it)) }.toUByteArray() }.toTypedArray(),
 )
 
 fun List<String>.parseToIntArrayMap(): IntTwoDimensionalMap =
-    parseToByteArrayMap<Int>(
-        toValue = { toInt() },
-        fromValue = { toUByte() },
+    parseToByteArrayMap(
+        toValue = { it.toInt() },
+        fromValue = { it.toUByte() },
         parse = { it.digitToInt() },
     )
