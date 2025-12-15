@@ -33,9 +33,9 @@ data class Machine(
     val lights: Int,
     val initialLights: Int,
     val buttonsList: List<Buttons>,
-    val joltage: Joltage,
+    val joltageGoal: Joltage,
 ) {
-    private val buttonsPermutations = mutableMapOf<List<Buttons>, MutableMap<Int, List<Joltage>>>()
+    private val joltageStepsPermutations = mutableMapOf<List<Buttons>, MutableMap<Int, List<JoltageStep>>>()
     private val buttonsAsInt =
         buttonsList.map { btns ->
             (lights - 1 downTo 0)
@@ -90,18 +90,18 @@ data class Machine(
                 }
             }
 
-        return go(listOf(JoltageStep(joltage)))
+        return go(listOf(JoltageStep(List(lights) { 0 })))
     }
 
     inner class JoltageStep(
         val current: Joltage,
         val pushed: Int = 0,
     ) {
-        fun finished(): Boolean = current.all { it == 0 }
+        fun finished(): Boolean = current.mapIndexed { index, value -> value == joltageGoal[index] }.all { it }
 
         fun next(): List<JoltageStep> =
             current
-                .mapIndexed { index, state -> index to state }
+                .mapIndexed { index, state -> index to joltageGoal[index] - state }
                 .firstOrNull { (_, state) -> state > 0 }
                 ?.let { (index, count) ->
                     val nextButtons = buttonsList.filter { btns -> index in btns }
@@ -110,31 +110,46 @@ data class Machine(
                 }
                 ?: emptyList()
 
-        private fun next(buttons: Buttons): JoltageStep? {
-            val next = current.mapIndexed { index, state -> if (index in buttons) state - 1 else state }
-            return if (isPossible(next)) {
-                JoltageStep(next, pushed + 1)
-            } else {
-                null
-            }
+        private fun next(joltageStep: JoltageStep): JoltageStep? {
+            val next =
+                JoltageStep(
+                    current = current.zip(joltageStep.current).map { (a, b) -> a + b },
+                    pushed = pushed + joltageStep.pushed,
+                )
+            return if (next.isPossible) next else null
         }
 
-        private fun isPossible(newJolt: Joltage): Boolean = newJolt.all { it >= 0 }
+        private val isPossible: Boolean by lazy { current.mapIndexed { index, status -> status <= joltageGoal[index] }.all { it } }
     }
 
     private fun findPermutations(
         buttonsList: List<Buttons>,
         count: Int,
-    ): List<Joltage> =
-        buttonsPermutations
-            .computeIfAbsent(buttonsList) { mutableMapOf() }
-            .computeIfAbsent(count) {
-                findPermutations(buttonsList, count - 1).flatMap { permutation ->
-                    buttonsList.map { buttons ->
-                        permutation.mapIndexed { index, item -> if (index in buttons) item + 1 else item }
+    ): List<JoltageStep> {
+        val countToPermutations = joltageStepsPermutations.computeIfAbsent(buttonsList) { mutableMapOf() }
+        val permutations = countToPermutations[count]
+        if (permutations == null) {
+            countToPermutations[count] =
+                if (count == 1) {
+                    buttonsList.map { btns ->
+                        JoltageStep(current = List(lights) { if (it in btns) 1 else 0 }, pushed = 1)
+                    }
+                } else {
+                    findPermutations(buttonsList, count - 1).flatMap { permutation ->
+                        buttonsList.map { buttons ->
+                            JoltageStep(
+                                current =
+                                    permutation.current.mapIndexed { index, state ->
+                                        if (index in buttons) state + 1 else state
+                                    },
+                                pushed = permutation.pushed + 1,
+                            )
+                        }
                     }
                 }
-            }
+        }
+        return countToPermutations.getValue(count)
+    }
 
     companion object {
         fun fromLine(line: String): Machine {
@@ -163,7 +178,7 @@ data class Machine(
                 initialLights = initialLights,
                 lights = rawLightStatus.length,
                 buttonsList = buttons,
-                joltage = joltage,
+                joltageGoal = joltage,
             )
         }
     }
