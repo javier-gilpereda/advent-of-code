@@ -91,6 +91,33 @@ data class Machine(
         private val isPossible: Boolean by lazy { current.mapIndexed { index, status -> status <= joltageGoal[index] }.all { it } }
 
         fun finished(): Boolean = current.mapIndexed { index, value -> value == joltageGoal[index] }.all { it }
+
+        fun nextSteps(): List<JoltageStep> {
+            val possibleButtons = buttonsList.filter { buttons -> buttons.all { current[it] < joltageGoal[it] } }
+
+            return current
+                .filterIndexed { index, state -> state < joltageGoal[index] }
+                .mapIndexed { index, _ -> index to possibleButtons.filter { buttons -> index in buttons } }
+                .sortedBy { (_, buttons) -> buttons.size }
+                .firstOrNull()
+                ?.let { (nextIndex, buttons) ->
+                    when (buttons.size) {
+                        0 -> emptyList()
+                        1 -> listOfNotNull(next(buttons.first()))
+                        else -> next(buttons, current[nextIndex])
+                    }
+                } ?: emptyList()
+        }
+
+        fun next(buttons: Buttons): JoltageStep? {
+            val nextStep = JoltageStep(current.mapIndexed { index, value -> if (index in buttons) value + 1 else value })
+            return if (nextStep.isPossible) nextStep else null
+        }
+
+        fun next(
+            buttonsList: List<Buttons>,
+            count: Int,
+        ): List<JoltageStep> = TODO()
     }
 
     private fun findPermutations(
