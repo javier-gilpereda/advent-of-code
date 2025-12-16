@@ -10,7 +10,7 @@ fun firstTask(input: Sequence<String>): String {
             println("${count++}: $it")
             Machine.fromLine(it)
         }.sumOf { machine ->
-            machine.toPushToInitialize()
+            machine.buttonsToPushToInitializeTheMachine()
         }.toString()
 }
 
@@ -21,13 +21,15 @@ fun secondTask(input: Sequence<String>): String {
             println("${count++}: $it")
             Machine.fromLine(it)
         }.sumOf { machine ->
-            machine.toPushToConfigureJoltage()
+            machine.buttonsToPushToConfigureTheJoltage()
         }.toString()
 }
 
 private val LIGHT_STATE_REGEX = "\\[([.#]+)]".toRegex()
 private val BUTTONS_REGEX = "\\(([0-9,]+)\\)\\s".toRegex()
 private val JOLTAGE_STATE_REGEX = "\\{([0-9,]+)}".toRegex()
+
+private val participantsToCountToPermutations = mutableMapOf<Int, MutableMap<Int, List<List<Int>>>>()
 
 data class Machine(
     val lights: Int,
@@ -36,6 +38,7 @@ data class Machine(
     val joltageGoal: Joltage,
 ) {
     private val joltageStepsPermutations = mutableMapOf<List<Buttons>, MutableMap<Int, List<JoltageStep>>>()
+
     private val buttonsAsInt =
         buttonsList.map { btns ->
             (lights - 1 downTo 0)
@@ -45,7 +48,7 @@ data class Machine(
                 .toInt(2)
         }
 
-    fun toPushToInitialize(): Int {
+    fun buttonsToPushToInitializeTheMachine(): Int {
         tailrec fun go(
             rest: List<InitStep>,
             last: InitStep? = null,
@@ -72,23 +75,11 @@ data class Machine(
         return go(listOf(InitStep(0, initialLights)))
     }
 
-    fun toPushToConfigureJoltage(): Int {
+    fun buttonsToPushToConfigureTheJoltage(): Int {
         tailrec fun go(
             open: List<JoltageStep>,
             current: Int = Int.MAX_VALUE,
-        ): Int =
-            if (open.isEmpty()) {
-                current
-            } else {
-                val next = open.first()
-                if (next.finished()) {
-                    val nextOpen = open.drop(1).filter { it.pushed < current }
-                    go(nextOpen, next.pushed)
-                } else {
-                    val newOpen = open.drop(1) + next.next().filter { it.pushed < current }
-                    go(newOpen.sortedByDescending { it.pushed }, current)
-                }
-            }
+        ): Int = TODO()
 
         return go(listOf(JoltageStep(List(lights) { 0 })))
     }
@@ -97,56 +88,24 @@ data class Machine(
         val current: Joltage,
         val pushed: Int = 0,
     ) {
-        fun finished(): Boolean = current.mapIndexed { index, value -> value == joltageGoal[index] }.all { it }
-
-        fun next(): List<JoltageStep> =
-            current
-                .mapIndexed { index, state -> index to joltageGoal[index] - state }
-                .firstOrNull { (_, state) -> state > 0 }
-                ?.let { (index, count) ->
-                    val nextButtons = buttonsList.filter { btns -> index in btns }
-                    findPermutations(nextButtons, count)
-                        .mapNotNull { permutation -> next(permutation) }
-                }
-                ?: emptyList()
-
-        private fun next(joltageStep: JoltageStep): JoltageStep? {
-            val next =
-                JoltageStep(
-                    current = current.zip(joltageStep.current).map { (a, b) -> a + b },
-                    pushed = pushed + joltageStep.pushed,
-                )
-            return if (next.isPossible) next else null
-        }
-
         private val isPossible: Boolean by lazy { current.mapIndexed { index, status -> status <= joltageGoal[index] }.all { it } }
+
+        fun finished(): Boolean = current.mapIndexed { index, value -> value == joltageGoal[index] }.all { it }
     }
 
     private fun findPermutations(
-        buttonsList: List<Buttons>,
+        participants: Int,
         count: Int,
-    ): List<JoltageStep> {
-        val countToPermutations = joltageStepsPermutations.computeIfAbsent(buttonsList) { mutableMapOf() }
+    ): List<List<Int>> {
+        val countToPermutations = participantsToCountToPermutations.computeIfAbsent(participants) { mutableMapOf() }
         val permutations = countToPermutations[count]
         if (permutations == null) {
-            countToPermutations[count] =
-                if (count == 1) {
-                    buttonsList.map { btns ->
-                        JoltageStep(current = List(lights) { if (it in btns) 1 else 0 }, pushed = 1)
-                    }
-                } else {
-                    findPermutations(buttonsList, count - 1).flatMap { permutation ->
-                        buttonsList.map { buttons ->
-                            JoltageStep(
-                                current =
-                                    permutation.current.mapIndexed { index, state ->
-                                        if (index in buttons) state + 1 else state
-                                    },
-                                pushed = permutation.pushed + 1,
-                            )
-                        }
-                    }
-                }
+            if (participants == 2) {
+                countToPermutations[count] = List(count + 1) { next -> listOf(next, count - next) }
+            } else {
+                List(count + 1) { it }
+                    .flatMap { next -> findPermutations(participants - 1, count - next) }
+            }
         }
         return countToPermutations.getValue(count)
     }
